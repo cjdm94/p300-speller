@@ -5,14 +5,19 @@ from classifier import Classifier
 from cortex import Cortex
 import time
 import os
+import threading
 from dotenv import load_dotenv
 load_dotenv()
+
+# https://stackoverflow.com/questions/34581255/python-flask-socketio-send-message-from-thread-not-always-working
+import eventlet
+eventlet.monkey_patch()
 
 app = Flask(__name__,
             static_url_path='', 
             static_folder='web/static',
             template_folder='web/templates')
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='eventlet')
 
 @socketio.on('connect')
 def ws_connect():

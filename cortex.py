@@ -29,10 +29,10 @@ MENTAL_COMMAND_TRAINING_THRESHOLD   =   18
 
 class Cortex():
     def __init__(self, user, debug_mode=False):
+        self.user = user
         url = "wss://localhost:6868"
         self.ws = websocket.create_connection(url,
                                             sslopt={"cert_reqs": ssl.CERT_NONE})
-        self.user = user
         self.debug = debug_mode
 
     def query_headset(self):
@@ -225,28 +225,32 @@ class Cortex():
 
     def sub_request(self, stream):
         print('subscribe request --------------------------------')
+        self.stream = stream
         sub_request_json = {
             "jsonrpc": "2.0", 
             "method": "subscribe", 
             "params": { 
                 "cortexToken": self.auth,
                 "session": self.session_id,
-                "streams": stream
+                "streams": [self.stream]
             }, 
             "id": SUB_REQUEST_ID
         }
 
         self.ws.send(json.dumps(sub_request_json))
-        
-        if 'sys' in stream:
-            new_data = self.ws.recv()
-            print(json.dumps(new_data, indent=4))
-            print('\n')
-        else:
-            while True:
-                new_data = self.ws.recv()        
-                print(new_data)
+        new_data = self.ws.recv() 
+        print(new_data) 
 
+    def stream_eeg(self):
+        stream = self.stream
+        # can "block" (no message recieved) if headset not connected but 
+        # Emotiv app says it is (bug)
+        resp = self.ws.recv()
+        jsonResp = json.loads(resp)
+        if stream in jsonResp:        
+            return jsonResp[stream]
+        else:
+            return ""
 
     def query_profile(self):
         print('query profile --------------------------------')

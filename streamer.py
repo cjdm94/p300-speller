@@ -1,24 +1,6 @@
-from cortex import Cortex
-from dotenv import load_dotenv
-load_dotenv()
-import os
+import threading
 
-class Streamer():
-	def __init__(self):
-		user = {
-			"license" : os.environ.get("LICENSE_KEY"),
-			"client_id" : os.environ.get("CLIENT_ID"),
-			"client_secret" : os.environ.get("CLIENT_SECRET"),
-			"debit" : 1
-		}
-		self.c = Cortex(user, debug_mode=True)
-		self.c.do_prepare_steps()
-
-	def sub(self, streams):
-		self.c.sub_request(streams)
-
-# Data sample schema: 
-
+# Emotiv Insight data sample schema: 
 # [
 #   "COUNTER",
 #   "INTERPOLATED",
@@ -27,8 +9,22 @@ class Streamer():
 #   "MARKER_HARDWARE",
 #   "MARKERS"
 # ]
-
 # e.g. "eeg":[93,0,4146.667,4485.641,4166.154,4222.051,4132.308,450.0,0,[]]
 
-# channels indexes = eeg[2], ..., eeg[6]
-# Streamer().sub(['eeg'])
+class Streamer(threading.Thread):
+    def __init__(self, cortex, classifier, emit):
+        super(Streamer, self).__init__()
+        self.cortex = cortex
+        self.classifier = classifier
+        self.emit = emit
+
+        self.cortex.do_prepare_steps()
+        self.cortex.sub_request('eeg')
+    def run(self):
+        while True:
+            sample = self.cortex.stream_eeg()
+            if sample != "":
+                prediction = self.classifier.add_sample(sample[2:7])
+                if prediction != "":
+                    print("PREDICTION:", prediction)
+                    self.emit('prediction', prediction)

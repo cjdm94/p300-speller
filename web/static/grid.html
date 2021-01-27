@@ -212,24 +212,26 @@
     </body>
 
     <script>
-        const socket      = io();
-        const $messages   = $('#messages');
-        const $turnOffLed = $('#turnOffLed');
-        const $turnOnLed  = $('#turnOnLed');
+        const socket = io('localhost:5000');
 
-        socket.on('connect', function() {
+        socket.on('connect', () => {
             console.log('Connected to WebSocket server.')
         })
+
+        socket.on('start', (time) => {
+            console.log("Start time:", time)
+        })
+
+        socket.on('prediction', (prediction) => {
+            print("GOT CHAR PREDICTION:", prediction)
+            if (prediction) {
+                $("#inputText").val($("#inputText").val() + prediction);
+            }
+        });
 
         socket.on('disconnect', function() {
             console.log('Disconnected from WebSocket server.')
         })
-
-        socket.on('classification', (char) => {
-            if (char) {
-                $("#inputText").val($("#inputText").val() + char);
-            }
-        });
     </script>
 
 </html>

@@ -222,15 +222,19 @@
             console.log("Start time:", time)
         })
 
-        socket.on('prediction', (prediction) => {
-            print("GOT CHAR PREDICTION:", prediction)
-            if (prediction) {
-                $("#inputText").val($("#inputText").val() + prediction);
+        socket.on('prediction', (p) => {
+            console.log("GOT CHAR PREDICTION:", p)
+            if (p) {
+                const row = p.charAt(0)
+                const col = p.charAt(1)
+                const gridVal = $(".grid-container.letters " + ".row-" + row + ".col-" + col).text();
+                $("#inputText").val($("#inputText").val() + gridVal.trim());
             }
         });
 
-        socket.on('disconnect', function() {
+        socket.on('disconnect', () => {
             console.log('Disconnected from WebSocket server.')
+            $("#inputText").val('')
         })
     </script>
 

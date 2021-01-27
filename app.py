@@ -32,6 +32,7 @@ def ws_connect():
 
 @socketio.on('disconnect')
 def ws_disconnect():
+    # TODO kill threads
     print('Client disconnected from WebSocket')
 
 @app.route('/', methods=["GET", "POST"])

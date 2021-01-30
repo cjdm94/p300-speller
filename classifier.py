@@ -19,7 +19,7 @@ class Classifier():
         self.num_rows = num_rows
         self.num_columns = num_columns
         self.lda = LinearDiscriminantAnalysis()
-        self.fs = 250
+        self.fs = 128
         self.started = False
         self.collecting = False
         self.buffer = []
@@ -33,7 +33,7 @@ class Classifier():
         self.start_time = start_time
         self.inter_mega_trial = inter_mega_trial
         self.counter = 0
-        self.window_length = int(0.6 * 250)
+        self.window_length = int(0.6 * 128)
         #print(start_time)
         
         self.lowcut = 0.5
@@ -74,14 +74,14 @@ class Classifier():
         self.counter += 1
         
         if self.collecting:
-            self.data.append(sample[0:2])
+            self.data.append(sample)
             self.num_samples += 1
             if self.num_samples == self.samples_in_data:
                 print(self.counter)
                 message = self.run_prediction()
                 self.reset()
         else:
-            self.buffer.append(sample[0:2])
+            self.buffer.append(sample)
             self.samples_since_last += 1
             if self.started:
                 if self.samples_since_last == self.inter_mega_trial * self.fs:
@@ -96,7 +96,7 @@ class Classifier():
                     print("Classifier: sample received before start time; ignoring.")
         return message
     def reset(self):
-        self.buffer = self.data[-250*5:]
+        self.buffer = self.data[-128*5:]
         self.data = []
         self.samples_since_last = 0
         self.num_samples = 0

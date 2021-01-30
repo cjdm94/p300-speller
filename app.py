@@ -22,7 +22,7 @@ socketio = SocketIO(app, async_mode='eventlet')
 @socketio.on('connect')
 def ws_connect():
     # TODO move into "top level" class and make this a one liner
-    start_time = time.time() 
+    start_time = time.time() + 10
     emit('start', start_time)
     classifier = Classifier(start_time)
     user = {

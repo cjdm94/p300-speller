@@ -3,7 +3,8 @@
         <link rel="stylesheet" type="text/css" href="css/styles.css" />
         <meta http-equiv="content-type" content="text/php; charset=utf-8" />
     	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    	<script src="js/main.js"></script>
+        <script src="https://cdn.socket.io/socket.io-3.0.1.js"></script>
+        <script src="js/main.js"></script>
         <title>P-300 Speller</title>
     </head>
 
@@ -12,7 +13,41 @@
             <img src="img/brain.png" width="600px">
         </div>
         <div class="grid-container">
-            <a href="grid.html"><button>Begin</button></a>
+            <a href="grid.html"><button class="start-button">Begin</button></a>
         </div>
     </body>
+    <script>
+        const socket = io('localhost:5000');
+
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server.')
+        })
+        
+        // Start time: 1612018984.403719
+        // Now:        1612018974
+        // Starts in:  10403.718948364258
+        socket.on('start', (startTime) => {
+            var now = Math.round((new Date()).getTime() / 1000);
+            flashInitiationDelay = (startTime - now) * 1000
+            console.log("Starting experiment in approx. " + flashInitiationDelay/1000 + "s")
+            setTimeout(() => {
+                $(".start-button").click()
+            }, flashInitiationDelay);
+        })
+
+        socket.on('prediction', (p) => {
+            console.log("GOT CHAR PREDICTION:", p)
+            if (p) {
+                const row = p.charAt(0)
+                const col = p.charAt(1)
+                const gridVal = $(".grid-container.letters " + ".row-" + row + ".col-" + col).text();
+                $("#inputText").val($("#inputText").val() + gridVal.trim());
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket server.')
+            $("#inputText").val('')
+        })
+    </script>
 </html>

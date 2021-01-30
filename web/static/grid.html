@@ -214,13 +214,22 @@
     <script>
         const socket = io('localhost:5000');
 
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket server.')
-        })
+        // socket.on('connect', () => {
+        //     console.log('Connected to WebSocket server.')
+        // })
 
-        socket.on('start', (time) => {
-            console.log("Start time:", time)
-        })
+        // socket.on('start', (time) => {
+        //     console.log("CURRENT TIME:",$.now()) 
+        //     console.log("Start time:", time)
+        //     setTimeout(() => {
+        //         console.log("CLICKING START BUTTON in 2s")
+        //         $(".start-button").click()
+        //     }, 2000);
+        // })
+
+        // socket.on('start', (time) => {
+        //     console.log("Start time:", time)
+        // })
 
         socket.on('prediction', (p) => {
             console.log("GOT CHAR PREDICTION:", p)

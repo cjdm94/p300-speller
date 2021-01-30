@@ -24,21 +24,27 @@ class Classifier():
         self.collecting = False
         self.buffer = []
         self.data = []
+        # (0.1 + 0.2) * 128 = 38ms
         self.stimulus_time = int((inter_flash + flash) * self.fs)
+        # 38.4 * (6 + 6) = 456ms
         self.trial_length = self.stimulus_time * (num_rows + num_columns)
+        # 3 * 456 = 1368 samples covering the time window during which three flashing trials are run
+        # (each row and column is flashed three times)
         self.samples_in_data = num_trials * self.trial_length
+        
         self.samples_since_last = 0
         self.num_samples = 0
         self.channels = channels
         self.start_time = start_time
         self.inter_mega_trial = inter_mega_trial
         self.counter = 0
-        self.window_length = int(0.6 * 128)
-        #print(start_time)
+
+        # This is the number of samples during 600ms - using 600ms windows
+        self.window_length = int(0.6 * self.fs)
         
         self.lowcut = 0.5
         self.highcut = 20
-        self.ds_factor = 3
+        self.ds_factor = 1 #TODO is downsample needed, Emotiv downsamples already 
         
         self.train()
     def train(self):
@@ -77,32 +83,32 @@ class Classifier():
             self.data.append(sample)
             self.num_samples += 1
             if self.num_samples == self.samples_in_data:
-                print(self.counter)
+                print(self.num_samples, " samples collected; running prediction...")
                 message = self.run_prediction()
                 self.reset()
         else:
             self.buffer.append(sample)
             self.samples_since_last += 1
             if self.started:
+                # 3 * 128 = 384 samples between trials, ignore
                 if self.samples_since_last == self.inter_mega_trial * self.fs:
                     self.collecting = True
-                    print(self.counter)
             else: 
                 if time.time() > self.start_time:
                     self.started = True
                     self.collecting = True
-                    print(self.counter)
                 else:
                     print("Classifier: sample received before start time; ignoring.")
         return message
     def reset(self):
+        # TODO how does the buffer work?
         self.buffer = self.data[-128*5:]
+        #self.buffer = self.data[(-self.fs)*5:]
         self.data = []
         self.samples_since_last = 0
         self.num_samples = 0
         self.collecting = False
     def run_prediction(self,):
-        print("RUNNING PREDICTION...")
         buffer_length = len(self.buffer)
         all_data = np.vstack((np.array(self.buffer), np.array(self.data)))
         filtered_data = self.filter_(all_data)
@@ -122,6 +128,7 @@ class Classifier():
         return message
 
     def filter_(self,arr):
+       # TODO what should nyq be, what should ds_rate be?
        nyq = 0.5 * self.fs
        order = 1
        b, a = signal.butter(order, [self.lowcut/nyq, self.highcut/nyq], btype='band')
@@ -136,7 +143,7 @@ class Classifier():
             window = arr[i:i+self.window_length].T
             window = np.mean(window, axis=0)
             new_arr.append(window)
-            i += self.stimulus_time
+            i += self.stimulus_time # iterations of 38ms in a 600ms range
         if (i < len(arr)):
             window = arr[i:].T
             window = np.mean(window, axis=0)
@@ -154,6 +161,7 @@ class Classifier():
                 new_arr.append(window)
         n = np.array(new_arr)
         return n
+    # TODO what are these arrays?
     def extract(self, arr, row=True):
         if row:
             order = self.row_order

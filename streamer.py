@@ -24,7 +24,7 @@ class Streamer(threading.Thread):
         while True:
             sample = self.cortex.stream_eeg()
             if sample != "":
-                chanData = [sample[4]] # 5
+                chanData = [sample[4]]
                 prediction = self.classifier.add_sample(chanData)
                 if prediction != "":
                     print("PREDICTION:", prediction)

@@ -1,7 +1,8 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 from streamer import Streamer
-from classifier import Classifier
+from classifier import Classifier as LiveClassifier
+from training_classifier import Classifier as TrainingClassifier
 from cortex import Cortex
 import time
 import os
@@ -21,10 +22,17 @@ socketio = SocketIO(app, async_mode='eventlet')
 
 @socketio.on('connect')
 def ws_connect():
-    # TODO move into "top level" class and make this a one liner
+    # TODO move this logic into "top level" class and make this a one liner
+    
+    session_type = "training"
     start_time = time.time() + 10
     emit('start', start_time)
-    classifier = Classifier(start_time)
+
+    if session_type == "training":
+        classifier = TrainingClassifier(start_time)
+    else: 
+        classifier = LiveClassifier(start_time)
+
     user = {
         "license" : os.environ.get("LICENSE_KEY"),
         "client_id" : os.environ.get("CLIENT_ID"),

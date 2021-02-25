@@ -24,9 +24,9 @@ class Classifier():
         self.collecting = False
         self.buffer = []
         self.data = []
-        # (0.1 + 0.2) * 128 = 38ms
+        # (0.1 + 0.2) * 128 = 38
         self.stimulus_time = int((inter_flash + flash) * self.fs)
-        # 38.4 * (6 + 6) = 456ms
+        # 38.4 * (6 + 6) = 456
         self.trial_length = self.stimulus_time * (num_rows + num_columns)
         # 3 * 456 = 1368 samples covering the time window during which three flashing trials are run
         # (each row and column is flashed three times)
@@ -44,7 +44,7 @@ class Classifier():
         
         self.lowcut = 0.5
         self.highcut = 20
-        self.ds_factor = 1 #TODO is downsample needed, Emotiv downsamples already 
+        self.ds_factor = 3 #TODO is downsample needed, Emotiv downsamples already 
         
         self.train()
     def train(self):
@@ -53,17 +53,21 @@ class Classifier():
         stims = np.loadtxt('data/target.txt', dtype=np.uint)
         nstims = np.loadtxt('data/nontarget.txt', dtype=np.uint)
         data = self.filter_(data)
+        print("filtered data:", data)
         # Epoch and downsample
         t_ep1 = self.epoch_data_by_stims(data, stims)
-        t_ep = t_ep1[:, ::self.ds_factor]
+        t_ep = t_ep1
         n_ep1 = self.epoch_data_by_stims(data, nstims)
-        n_ep = n_ep1[:, ::self.ds_factor]
+        n_ep = n_ep1
         
         # Prepare inputs for classifier
-        t_ep = np.hstack((t_ep, np.ones([t_ep.shape[0],1])))
-        n_ep = np.hstack((n_ep, np.zeros([n_ep.shape[0],1])))
-        X = np.vstack((t_ep, n_ep))[:,:-1]
+        t_ep = np.hstack((t_ep, np.ones([t_ep.shape[0],1]))) # target epochs
+        n_ep = np.hstack((n_ep, np.zeros([n_ep.shape[0],1]))) # non target epochs
+        X = np.vstack((t_ep, n_ep))[:,:-1] # stack target and non target epochs
         Y = np.vstack((t_ep, n_ep))[:,-1]
+
+        print("X:", X)
+        print("Y:", Y)
         ''' Testing classifier
         seed = 7
         X_train, X_validation, Y_train, Y_validation = model_selection.train_test_split(X, Y, test_size=0.2, random_state=seed)
@@ -109,15 +113,23 @@ class Classifier():
         self.num_samples = 0
         self.collecting = False
     def run_prediction(self,):
+        # buffer length = current length of buffer
+        # stack the data onto the buffer data
+        # filter all this data
+        # epoch only the actual data, ignoring the buffer data
+
         buffer_length = len(self.buffer)
         all_data = np.vstack((np.array(self.buffer), np.array(self.data)))
         filtered_data = self.filter_(all_data)
         REALdata = filtered_data[buffer_length:]    # cut out filtering artifacts/buffer
         data = self.epoch_data(REALdata)
+        
         rows = self.extract(data, row=True)
-        rows = rows[:,:,::self.ds_factor]
+        # rows = rows[:,:,::self.ds_factor]
+        rows = rows
         columns = self.extract(data, row=False)
-        columns = columns[:,:,::self.ds_factor]
+        # columns = columns[:,:,::self.ds_factor]
+        columns = columns
         probs = np.array([np.mean(self.lda.predict_proba(row), axis=0) for row in rows])
         print("PROBABILITIES ROWS:\n", probs)
         pred_row = np.argmax(probs[:, 1])
@@ -129,8 +141,8 @@ class Classifier():
 
     def filter_(self,arr):
        # TODO what should nyq be, what should ds_rate be?
-       nyq = 0.5 * self.fs
-       order = 1
+       nyq = 0.5 * 250 # 0.5 * 250x
+       order = 1 
        b, a = signal.butter(order, [self.lowcut/nyq, self.highcut/nyq], btype='band')
        for i in range(0, 5):
            arr = signal.lfilter(b, a, arr, axis=0)
@@ -139,11 +151,24 @@ class Classifier():
     def epoch_data(self, arr):
         new_arr = []
         i = 0 
+        # arr length is 1368 - the number of samples collecting for each trial
+        # 1) 0 <= 1368 - 78 (1290 samples)
+        # epoch = data[0:78]
+        # 2) 38 <= 1290
+        # epoch = data[38:116]
+        # 33) 1254 <= 1290
+        # epoch = data[1254:1332]
+        # 34) 1292 > 1290
+
+        # 1292 < 1368:
+        # epoch = data[1292:1369] (the remaining 77 samples)
+        # if final epoch is missing some samples, add zero rows
         while i <= len(arr) - self.window_length:
             window = arr[i:i+self.window_length].T
             window = np.mean(window, axis=0)
+            # window is 
             new_arr.append(window)
-            i += self.stimulus_time # iterations of 38ms in a 600ms range
+            i += self.stimulus_time
         if (i < len(arr)):
             window = arr[i:].T
             window = np.mean(window, axis=0)

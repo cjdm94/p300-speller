@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import math
+import os
 
 class Classifier():
     def __init__(self,
@@ -57,11 +58,17 @@ class Classifier():
         self.delim = ","
         
     def add_sample(self, sample):
-        if time.time() <= self.start_time: 
+        if time.time() <= self.start_time or self.num_samples > 15360: 
             return ""
-        self.data.append(sample)
+
+        self.data.append(sample[0])
         self.num_samples += 1
-        if self.num_samples == self.sample_limit:    
+        
+        if self.num_samples % 1000 == 0:
+            print("NUM SAMPLES:", self.num_samples)
+
+        if self.num_samples == 15360:
+            print("Sample limit reached:", time.time() - self.start_time)  
             all_stims = self.determine_stims(
                 self.sample_limit, 
                 self.stim_samples, 
@@ -73,25 +80,21 @@ class Classifier():
             self.write_data_to_file(stims['targets'], self.target_stims_path)
             self.write_data_to_file(stims['non_targets'], self.non_target_stims_path)
             self.classify_training_data()
-            return ""
+            os.system('say "training data classified!"')
+        return ""
 
     def classify_training_data(self):
-        data = np.loadtxt(self.training_data_path, delimiter=self.delim).T
-        stims = np.loadtxt(self.target_stims_path, dtype=np.uint)
-        nstims = np.loadtxt(self.non_target_stims_path, dtype=np.uint)
-        s1 = data
+        data = np.loadtxt(self.training_data_path, delimiter=self.delim)
+        data = self._filter(data, 0.16)
+        target_stims = np.loadtxt(self.target_stims_path, dtype=np.uint)
+        non_target_stims = np.loadtxt(self.non_target_stims_path, dtype=np.uint)
+        target_epochs = self.epoch_data(data, target_stims)
+        non_target_epochs = self.epoch_data(data, non_target_stims)
+        X = np.vstack((target_epochs, non_target_epochs))
+        Y = []
+        Y += ([1] * len(target_epochs))
+        Y += ([0] * len(non_target_epochs))
 
-        t_ep1 = self.epoch_data(s1, stims, self.window_length)
-        n_ep1 = self.epoch_data(s1, nstims, self.window_length)
-
-        # Prepare inputs for classifier
-        t_ep = np.hstack((t_ep1, np.ones([t_ep1.shape[0],1])))
-        n_ep = np.hstack((n_ep1, np.zeros([n_ep1.shape[0],1])))
-        X = np.vstack((t_ep, n_ep))[:,:-1]
-        Y = np.vstack((t_ep, n_ep))[:,-1]
-
-        # Cross validation - train with 80% of data, and test with remaining 20%
-        # Tests classifier on data it hasn't already seen
         validation_size = 0.20
         seed = 7
         X_train, X_validation, Y_train, Y_validation = model_selection.train_test_split(X, Y, test_size=validation_size, random_state=seed)
@@ -100,19 +103,16 @@ class Classifier():
         print("Cross validation results:", cv_results)
 
         plt.figure()
-        for ep in n_ep1[:20]:
-            plt.plot(ep)
-        
+        plt.plot(data[:257])
         plt.figure()
-        x = np.arange(600, step=4)
-        plt.plot(x, np.mean(t_ep1, axis=0)[:], label="Target stimulus")
-        plt.plot(x, np.mean(n_ep1, axis=0)[:], label="Nontarget stimulus")
+        x = np.arange(600, step=600/self.window_length)
+        plt.plot(x, np.mean(target_epochs, axis=0)[:], label="Target stimulus")
+        plt.plot(x, np.mean(non_target_epochs, axis=0)[:], label="Nontarget stimulus")
         plt.title('Averaged response to flashing stimuli')
         plt.xlabel('Time (ms)')
         plt.ylabel('Response (microvolts)')
         plt.legend()
 
-        # Fit data to model and classify
         self.lda.fit(X_train, Y_train)
         print("Classifier mean accuracy:", self.lda.score(X_validation, Y_validation))
         y = self.lda.predict_proba(X_train)
@@ -121,10 +121,10 @@ class Classifier():
     def epoch_data(self, arr, stims):
         new_arr = []
         for i in stims:
-            window = arr[i:int(i+self.window_length)].T
-            window = np.mean(window, axis=0)
-            if np.max(np.abs(window)) < 300:
-                new_arr.append(window)
+            window_end = int(i+self.window_length)
+            if window_end > len(arr):
+                break 
+            new_arr.append(arr[i:window_end])
         n = np.array(new_arr)
         return n
     
@@ -132,7 +132,7 @@ class Classifier():
         targets = []
         non_targets = []
         stimIndex = 0
-        mega_trial_flashes = len(self.num_rows) + len(self.column_order)
+        mega_trial_flashes = len(self.row_order) + len(self.column_order)
         # in a mega trial, 35 flashes of row/col; 
         # these are indexes of flash of row/col containing target char (a)
         target_flashes = [0,9,16,20,28,32] 
@@ -157,9 +157,16 @@ class Classifier():
         return { 'targets': targets, 'non_targets': non_targets }
 
     def write_data_to_file(self, data, filename):
-        with open(filename, "w") as txt_file:
-            for line in data:
-                txt_file.write(self.delim.join(map(str, line)) + "\n")
+        with open(filename, "w+") as txt_file:
+            for v in data:
+                txt_file.write(str(v) + "\n")
+
+    def _filter(self, data, cutoff, order=1):
+        nyq = 0.5 * self.fs
+        normal_cutoff = cutoff / nyq
+        b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+        y = signal.filtfilt(b, a, data)
+        return y
 
     @staticmethod
     def determine_stims(sample_limit, 

@@ -1,4 +1,5 @@
-from flask import Flask, render_template
+from re import S
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from streamer import Streamer
 from classifier import Classifier as LiveClassifier
@@ -23,9 +24,10 @@ socketio = SocketIO(app, async_mode='eventlet')
 @socketio.on('connect')
 def ws_connect():
     # TODO move this logic into "top level" class and make this a one liner
+    print("Socket", request.sid, "connected.")
     
     session_type = "training"
-    start_time = time.time() + 10
+    start_time = time.time() + 5
     emit('start', start_time)
 
     if session_type == "training":
@@ -46,7 +48,7 @@ def ws_connect():
 @socketio.on('disconnect')
 def ws_disconnect():
     # TODO kill threads
-    print('Client disconnected from WebSocket')
+    print("Client", request.sid, "disconnected.")
 
 @app.route('/', methods=["GET", "POST"])
 def home():

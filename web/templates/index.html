@@ -1,53 +1,212 @@
+<!doctype html>
+
 <html>
     <head>
+        <meta charset='utf-8'>
         <link rel="stylesheet" type="text/css" href="css/styles.css" />
         <meta http-equiv="content-type" content="text/php; charset=utf-8" />
-    	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>  
         <script src="https://cdn.socket.io/socket.io-3.0.1.js"></script>
         <script src="js/main.js"></script>
+        <script src="http://code.responsivevoice.org/responsivevoice.js"></script>
         <title>P-300 Speller</title>
     </head>
 
-    <body style="background:#E0E1F0;">
-        <div class="grid-container">
-            <img src="img/brain.png" width="600px">
+    <body class="language-markup">
+    
+        <div class="text-insert">
+            <input id="inputText" type="text" data-maxitems="6" data-minchars="1" placeholder="INSERT TEXT HERE" style="width:900px"/>
         </div>
-        <div class="grid-container">
-            <a href="grid.html"><button class="start-button">Begin</button></a>
+
+      <div class="grid-container" style="margin-bottom:-30px;">
+
+            <!-- BEGIN LETTER/# GRID -->
+        <div class="grid-container letters">
+            <div class="grid-item row-1 col-0 A">
+            	A
+            </div>
+            <div class="grid-item row-1 col-1 B">
+            	B
+            </div>
+            <div class="grid-item row-1 col-2 C">
+            	C
+            </div>
+            <div class="grid-item row-1 col-3 D">
+            	D
+            </div>
+            <div class="grid-item row-1 col-4 E">
+            	E
+            </div>
+            <div class="grid-item row-1 col-5 F">
+            	F
+            </div>
+            <div class="grid-item row-2 col-0 G">
+            	G
+            </div>
+            <div class="grid-item row-2 col-1 H">
+            	H
+            </div>
+            <div class="grid-item row-2 col-2 I">
+            	I
+            </div>
+            <div class="grid-item row-2 col-3 J">
+            	J
+            </div>
+            <div class="grid-item row-2 col-4 K">
+            	K
+            </div>
+            <div class="grid-item row-2 col-5 L">
+            	L
+            </div>
+            <div class="grid-item row-3 col-0 M">
+            	M
+            </div>
+            <div class="grid-item row-3 col-1 N">
+            	N
+            </div>
+            <div class="grid-item row-3 col-2 O">
+            	O
+            </div>
+            <div class="grid-item row-3 col-3 P">
+            	P
+            </div>
+            <div class="grid-item row-3 col-4 Q">
+            	Q
+            </div>
+            <div class="grid-item row-3 col-5 R">
+            	R
+            </div>
+            <div class="grid-item row-4 col-0 S">
+            	S
+            </div>
+            <div class="grid-item row-4 col-1 T">
+            	T
+            </div>
+            <div class="grid-item row-4 col-2 U">
+            	U
+            </div>
+            <div class="grid-item row-4 col-3 V">
+            	V
+            </div>
+            <div class="grid-item row-4 col-4 W">
+            	W
+            </div>
+            <div class="grid-item row-4 col-5 X">
+            	X
+            </div>
+            <div class="grid-item row-5 col-0 Y">
+            	Y
+            </div>
+            <div class="grid-item row-5 col-1 Z">
+            	Z
+            </div>
+            <div class="grid-item row-5 col-2 0">
+            	__
+            </div>
+            <div class="grid-item row-5 col-3 1">
+            	❌
+            </div>
+            <div class="grid-item row-5 col-4 2 emojibtn" style="font-size:20px">
+            	ABC<br> 😄
+            </div>
+            <div class="grid-item row-5 col-5 3" onclick="speech()">
+            	🔊
+            </div>
+            
+        </div>
+
+           <!-- BEGIN EMOJI GRID -->
+        <div class="grid-container emoji">
+            <div class="grid-item row-1 col-0 emoji1">
+            	👍
+            </div>
+            <div class="grid-item row-1 col-1 emoji2">
+            	👎
+            </div>
+            <div class="grid-item row-1 col-2 emoji3">
+            	😊
+            </div>
+            <div class="grid-item row-1 col-3 emoji4">
+                😍
+            </div>
+            <div class="grid-item row-1 col-4 emoji5">
+            	😉
+            </div>
+            <div class="grid-item row-1 col-5 emoji6">
+            	😡
+            </div>
+            <div class="grid-item row-2 col-0 emoji7">
+            	🍴
+            </div>
+            <div class="grid-item row-2 col-1 emoji8">
+            	💧
+            </div>
+            <div class="grid-item row-2 col-2 emoji9">
+            	☕️
+            </div>
+            <div class="grid-item row-2 col-3 emoji10">
+            	🍕
+            </div>
+            <div class="grid-item row-2 col-4 emoji11">
+            	🍆
+            </div>
+            <div class="grid-item row-2 col-5 emoji12">
+            	🍑
+            </div>
+            <div class="grid-item row-3 col-0 emoji19">
+            	🕰️
+            </div>
+            <div class="grid-item row-3 col-1 emoji20">
+            	📸
+            </div>
+            <div class="grid-item row-3 col-2 emoji21">
+            	🚗
+            </div>
+            <div class="grid-item row-3 col-3 emoji22">
+            	😴
+            </div>
+            <div class="grid-item row-3 col-4 emoji23">
+            	🚿
+            </div>
+            <div class="grid-item row-3 col-5 emoji24">
+            	🎧
+            </div>
+            <div class="grid-item row-4 col-0 emoji25">
+            	🙏
+            </div>
+            <div class="grid-item row-4 col-1 emoji26">
+            	👏
+            </div>
+            <div class="grid-item row-4 col-2 emoji27">
+            	❤️
+            </div>
+            <div class="grid-item row-4 col-3 emoji28">
+            	✌️
+            </div>
+            <div class="grid-item row-4 col-4 emoji29">
+            	👋
+            </div>
+            <div class="grid-item row-4 col-5 emoji30">
+            	🤘
+            </div>
+            <div class="grid-item row-5 col-0 emoji31">
+            	🙃
+            </div>
+            <div class="grid-item row-5 col-1 emoji32">
+            	🎂
+            </div>
+            <div class="grid-item row-5 col-2 0">
+            	__
+            </div>
+            <div class="grid-item row-5 col-3 1">
+            	❌
+            </div>
+            <div class="grid-item row-5 col-4 2 emojibtn" style="font-size:20px">
+            	ABC<br> 😄
+            </div>
+            <div class="grid-item row-5 col-5 3" onclick="speech()">
+            	🔊
+            </div>
         </div>
     </body>
-    <script>
-        const socket = io('localhost:5000');
-
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket server.')
-        })
-        
-        // Start time: 1612018984.403719
-        // Now:        1612018974
-        // Starts in:  10403.718948364258
-        socket.on('start', (startTime) => {
-            var now = Math.round((new Date()).getTime() / 1000);
-            flashInitiationDelay = (startTime - now) * 1000
-            console.log("Starting experiment in approx. " + flashInitiationDelay/1000 + "s")
-            setTimeout(() => {
-                $(".start-button").click()
-            }, flashInitiationDelay);
-        })
-
-        socket.on('prediction', (p) => {
-            console.log("GOT CHAR PREDICTION:", p)
-            if (p) {
-                const row = p.charAt(0)
-                const col = p.charAt(1)
-                const gridVal = $(".grid-container.letters " + ".row-" + row + ".col-" + col).text();
-                $("#inputText").val($("#inputText").val() + gridVal.trim());
-            }
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from WebSocket server.')
-            $("#inputText").val('')
-        })
-    </script>
 </html>

@@ -3,6 +3,7 @@ from sklearn import model_selection
 import time
 from scipy import signal
 import numpy as np
+import sys
 
 class Classifier():
     def __init__(self,
@@ -48,50 +49,33 @@ class Classifier():
         
         self.train()
     def train(self):
-        data = np.loadtxt('data/raw_training.txt',
+        data = np.loadtxt('data/training_data.txt',
                       delimiter=',')
-        stims = np.loadtxt('data/target.txt', dtype=np.uint)
-        nstims = np.loadtxt('data/nontarget.txt', dtype=np.uint)
-        data = self.filter_(data)
-        print("filtered data:", data)
-        # Epoch and downsample
-        t_ep1 = self.epoch_data_by_stims(data, stims)
-        t_ep = t_ep1
-        n_ep1 = self.epoch_data_by_stims(data, nstims)
-        n_ep = n_ep1
-        
-        # Prepare inputs for classifier
-        t_ep = np.hstack((t_ep, np.ones([t_ep.shape[0],1]))) # target epochs
-        n_ep = np.hstack((n_ep, np.zeros([n_ep.shape[0],1]))) # non target epochs
-        X = np.vstack((t_ep, n_ep))[:,:-1] # stack target and non target epochs
-        Y = np.vstack((t_ep, n_ep))[:,-1]
-
-        print("X:", X)
-        print("Y:", Y)
-        ''' Testing classifier
-        seed = 7
-        X_train, X_validation, Y_train, Y_validation = model_selection.train_test_split(X, Y, test_size=0.2, random_state=seed)
-        kfold = model_selection.KFold(n_splits=10, random_state=seed)
-        cv_results = model_selection.cross_val_score(self.lda, X_train, Y_train, cv=kfold, scoring='accuracy')
-        print(cv_results)
-        '''
+        target_stims = np.loadtxt('data/target_stims.txt', dtype=np.uint)
+        non_target_stims = np.loadtxt('data/non_target_stims.txt', dtype=np.uint)
+        data = self._filter(data, 0.16)
+        target_epochs = self.epoch_data_by_stims(data, target_stims)
+        non_target_epochs = self.epoch_data_by_stims(data, non_target_stims)
+        X = np.vstack((target_epochs, non_target_epochs))
+        Y = []
+        Y += ([1] * len(target_epochs))
+        Y += ([0] * len(non_target_epochs))
         self.lda.fit(X,Y)
         print("TRAINING COMPLETE")
-        
         
     def add_sample(self, sample):
         message = ''
         self.counter += 1
         
         if self.collecting:
-            self.data.append(sample)
+            self.data.append(sample[0])
             self.num_samples += 1
             if self.num_samples == self.samples_in_data:
                 print(self.num_samples, " samples collected; running prediction...")
                 message = self.run_prediction()
                 self.reset()
         else:
-            self.buffer.append(sample)
+            self.buffer.append(sample[0])
             self.samples_since_last += 1
             if self.started:
                 # 3 * 128 = 384 samples between trials, ignore
@@ -105,88 +89,68 @@ class Classifier():
                     print("Classifier: sample received before start time; ignoring.")
         return message
     def reset(self):
-        # TODO how does the buffer work?
-        self.buffer = self.data[-128*5:]
-        #self.buffer = self.data[(-self.fs)*5:]
+        self.buffer = self.data[-self.fs*5:]
         self.data = []
         self.samples_since_last = 0
         self.num_samples = 0
         self.collecting = False
-    def run_prediction(self,):
-        # buffer length = current length of buffer
-        # stack the data onto the buffer data
-        # filter all this data
-        # epoch only the actual data, ignoring the buffer data
-
-        buffer_length = len(self.buffer)
-        all_data = np.vstack((np.array(self.buffer), np.array(self.data)))
-        filtered_data = self.filter_(all_data)
-        REALdata = filtered_data[buffer_length:]    # cut out filtering artifacts/buffer
-        data = self.epoch_data(REALdata)
         
-        rows = self.extract(data, row=True)
-        # rows = rows[:,:,::self.ds_factor]
-        rows = rows
-        columns = self.extract(data, row=False)
-        # columns = columns[:,:,::self.ds_factor]
-        columns = columns
-        probs = np.array([np.mean(self.lda.predict_proba(row), axis=0) for row in rows])
-        print("PROBABILITIES ROWS:\n", probs)
-        pred_row = np.argmax(probs[:, 1])
-        probs = np.array([np.mean(self.lda.predict_proba(column), axis=0) for column in columns])
-        print("PROBABILITIES COLS:\n", probs)
-        pred_col = np.argmax(probs[:, 1])
+    def run_prediction(self):
+        all_data = self.buffer + self.data
+        filtered_data = self._filter(all_data, 0.16)
+        data = filtered_data[len(self.buffer):]
+        epochs = self.epoch_data(data)
+       
+        lens = []
+        for e in epochs:
+            lens.append(len(e))
+        print("EPOCHS LENS:", lens)
+        print("EPOCH 1:", epochs[0])
+        print("EPOCH N", epochs[-1])
+
+        rows = self.extract(epochs, row=True)
+        columns = self.extract(epochs, row=False)
+        row_probs = np.array([np.mean(self.lda.predict_proba(row), axis=0) for row in rows])
+        pred_row = np.argmax(row_probs[:, 1])
+        col_probs = np.array([np.mean(self.lda.predict_proba(column), axis=0) for column in columns])
+        pred_col = np.argmax(col_probs[:, 1])
         message = str(pred_row) + str(pred_col)
+        print("PROBABILITIES ROWS:\n", row_probs)
+        print("PROBABILITIES COLS:\n", col_probs)
         return message
 
-    def filter_(self,arr):
-       # TODO what should nyq be, what should ds_rate be?
-       nyq = 0.5 * 250 # 0.5 * 250x
-       order = 1 
-       b, a = signal.butter(order, [self.lowcut/nyq, self.highcut/nyq], btype='band')
-       for i in range(0, 5):
-           arr = signal.lfilter(b, a, arr, axis=0)
-       return arr
+    def _filter(self, data, cutoff, order=1):
+        nyq = 0.5 * self.fs
+        normal_cutoff = cutoff / nyq
+        b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+        y = signal.filtfilt(b, a, data)
+        return y
        
     def epoch_data(self, arr):
         new_arr = []
         i = 0 
-        # arr length is 1368 - the number of samples collecting for each trial
-        # 1) 0 <= 1368 - 78 (1290 samples)
-        # epoch = data[0:78]
-        # 2) 38 <= 1290
-        # epoch = data[38:116]
-        # 33) 1254 <= 1290
-        # epoch = data[1254:1332]
-        # 34) 1292 > 1290
-
-        # 1292 < 1368:
-        # epoch = data[1292:1369] (the remaining 77 samples)
-        # if final epoch is missing some samples, add zero rows
+        n = 0
         while i <= len(arr) - self.window_length:
-            window = arr[i:i+self.window_length].T
-            window = np.mean(window, axis=0)
-            # window is 
-            new_arr.append(window)
+            window_end = int(i+self.window_length)
+            new_arr.append(arr[i:window_end])
             i += self.stimulus_time
+            n += 1
         if (i < len(arr)):
-            window = arr[i:].T
-            window = np.mean(window, axis=0)
-            b = np.zeros([self.window_length - len(window)]) # zero pad
-            window = np.hstack((window,b))
+            window = arr[i:]
+            zero_pad = np.zeros(self.window_length - len(window))
+            window = np.concatenate((window, zero_pad))
             new_arr.append(window)
         n = np.array(new_arr)
         return n
+
     def epoch_data_by_stims(self, arr, stims):
         new_arr = []
         for i in stims:
-            window = arr[i:int(i+self.window_length)].T
-            window = np.mean(window, axis=0)
-            if np.max(np.abs(window)) < 300:
-                new_arr.append(window)
+            window_end = int(i+self.window_length)
+            new_arr.append(arr[i:window_end])
         n = np.array(new_arr)
         return n
-    # TODO what are these arrays?
+
     def extract(self, arr, row=True):
         if row:
             order = self.row_order

@@ -3,7 +3,6 @@ from sklearn import model_selection
 import time
 from scipy import signal
 import numpy as np
-import sys
 
 class Classifier():
     def __init__(self,
@@ -100,20 +99,12 @@ class Classifier():
         filtered_data = self._filter(all_data, 0.16)
         data = filtered_data[len(self.buffer):]
         epochs = self.epoch_data(data)
-       
-        lens = []
-        for e in epochs:
-            lens.append(len(e))
-        print("EPOCHS LENS:", lens)
-        print("EPOCH 1:", epochs[0])
-        print("EPOCH N", epochs[-1])
-
         rows = self.extract(epochs, row=True)
         columns = self.extract(epochs, row=False)
         row_probs = np.array([np.mean(self.lda.predict_proba(row), axis=0) for row in rows])
-        pred_row = np.argmax(row_probs[:, 1])
+        pred_row = np.argmax(row_probs[:, 0])
         col_probs = np.array([np.mean(self.lda.predict_proba(column), axis=0) for column in columns])
-        pred_col = np.argmax(col_probs[:, 1])
+        pred_col = np.argmax(col_probs[:, 0])
         message = str(pred_row) + str(pred_col)
         print("PROBABILITIES ROWS:\n", row_probs)
         print("PROBABILITIES COLS:\n", col_probs)
@@ -123,18 +114,16 @@ class Classifier():
         nyq = 0.5 * self.fs
         normal_cutoff = cutoff / nyq
         b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
-        y = signal.filtfilt(b, a, data)
+        y = signal.lfilter(b, a, data)
         return y
        
     def epoch_data(self, arr):
         new_arr = []
         i = 0 
-        n = 0
         while i <= len(arr) - self.window_length:
             window_end = int(i+self.window_length)
             new_arr.append(arr[i:window_end])
             i += self.stimulus_time
-            n += 1
         if (i < len(arr)):
             window = arr[i:]
             zero_pad = np.zeros(self.window_length - len(window))

@@ -4,8 +4,6 @@ import time
 from scipy import signal
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
-import math
 import os
 
 class Classifier():
@@ -58,17 +56,13 @@ class Classifier():
         self.delim = ","
         
     def add_sample(self, sample):
-        if time.time() <= self.start_time or self.num_samples > 15360: 
+        if time.time() <= self.start_time or self.num_samples > self.sample_limit: 
             return ""
 
         self.data.append(sample[0])
         self.num_samples += 1
-        
-        if self.num_samples % 1000 == 0:
-            print("NUM SAMPLES:", self.num_samples)
 
-        if self.num_samples == 15360:
-            print("Sample limit reached:", time.time() - self.start_time)  
+        if self.num_samples == self.sample_limit:
             all_stims = self.determine_stims(
                 self.sample_limit, 
                 self.stim_samples, 
@@ -103,7 +97,7 @@ class Classifier():
         print("Cross validation results:", cv_results)
 
         plt.figure()
-        plt.plot(data[:257])
+        plt.plot(data)
         plt.figure()
         x = np.arange(600, step=600/self.window_length)
         plt.plot(x, np.mean(target_epochs, axis=0)[:], label="Target stimulus")
@@ -114,8 +108,8 @@ class Classifier():
         plt.legend()
 
         self.lda.fit(X_train, Y_train)
-        print("Classifier mean accuracy:", self.lda.score(X_validation, Y_validation))
         y = self.lda.predict_proba(X_train)
+        print("Classifier mean accuracy:", self.lda.score(X_validation, Y_validation))
         print("Classifier probability:", y)
     
     def epoch_data(self, arr, stims):
@@ -138,15 +132,8 @@ class Classifier():
         target_flashes = [0,9,16,20,28,32] 
         non_target_flashes = [1,2,3,4,5,6,7,8,10,11,12,13,14,15,17,18,19,21,22,23,24,25,26,27,29,30,31,33,34,35]
         while stimIndex <= len(stims):
-            # target_flash_indexes = mega_trial_target_flash_indexes
-            # end_index = stimIndex+mega_trial_flashes
             if stimIndex+mega_trial_flashes > len(stims) - 1:
                 return { 'targets': targets, 'non_targets': non_targets }
-                # cut_off = 35 - (end_index - len(stims) - 1)
-                # target_flash_indexes = [x for x in target_flash_indexes if x < cut_off]
-                # do the same for the non_target_flashes^
-                # end_index = len(stims) - 1
-                # print("END_INDEX:", end_index)
 
             mega_trial_stims = np.array(stims)[stimIndex:stimIndex+mega_trial_flashes]
             mega_trial_targets = mega_trial_stims[target_flashes]
@@ -156,16 +143,11 @@ class Classifier():
             stimIndex += mega_trial_flashes
         return { 'targets': targets, 'non_targets': non_targets }
 
-    def write_data_to_file(self, data, filename):
-        with open(filename, "w+") as txt_file:
-            for v in data:
-                txt_file.write(str(v) + "\n")
-
     def _filter(self, data, cutoff, order=1):
         nyq = 0.5 * self.fs
         normal_cutoff = cutoff / nyq
         b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
-        y = signal.filtfilt(b, a, data)
+        y = signal.lfilter(b, a, data)
         return y
 
     @staticmethod
@@ -191,3 +173,9 @@ class Classifier():
             sampleIndex += sampleIndexIncrement
             
         return stims
+    
+    @staticmethod
+    def write_data_to_file(data, filename):
+        with open(filename, "w+") as txt_file:
+            for v in data:
+                txt_file.write(str(v) + "\n")

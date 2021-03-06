@@ -148,3 +148,6 @@ tutorial_model_default_state
 node_modules
 */node_modules
 /node_modules/*
+
+# Custom
+test.py

@@ -26,7 +26,7 @@ def ws_connect():
     # TODO move this logic into "top level" class and make this a one liner
     print("Socket", request.sid, "connected.")
     
-    session_type = "training"
+    session_type = "live"
     start_time = time.time() + 5
     emit('start', start_time)
 
